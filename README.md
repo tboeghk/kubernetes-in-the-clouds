@@ -4,7 +4,7 @@ Spinning up Kubernetes clusters with different cloud providers. How is it like? 
 
 * [Digital Ocean](digital-ocean/)
 * AWS
-* Google
+* [Google](google/)
 
 ## Running the examples
 

@@ -1,3 +1,4 @@
 */.terraform
 */secrets.tf
 */*.tfstate*
+google/*.json
