@@ -8,7 +8,15 @@ DO ships it's own command line tool to interact with the API.
 brew install doctl
 ```
 
-Use it to explore the exact slugs for Kubernetes versions, regions and machine sizes
+Before you can use it, you need to [generate an API token](https://cloud.digitalocean.com/account/api/tokens) 
+and configure the command line tool:
+
+```
+doctl auth init
+```
+
+Then use it to explore the exact slugs for Kubernetes versions, regions 
+and machine sizes:
 
 ```
 $ doctl kubernetes options versions
@@ -63,8 +71,3 @@ dev-infra-pool-gkzy   Ready    <none>   5m21s   v1.15.5
 
 ![DO Kubernetes cluster](do_cluster.png)
 
-## Destroying things
-
-```
-tf destroy
-```
