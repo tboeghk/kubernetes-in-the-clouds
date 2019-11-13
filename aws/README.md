@@ -15,6 +15,17 @@ creation takes staggering 10+ minutes.
 brew install aws-iam-authenticator
 ```
 
+## Basic networking
+
+We set up basic networking (VPC across AZs, subnets and routing) in folder `networking`
+
+```
+$ cd networking
+$ tf init
+$  tf plan
+$ tf apply
+```
+
 ## Creating a cluster
 
 ```
