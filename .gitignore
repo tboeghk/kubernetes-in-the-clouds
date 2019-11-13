@@ -2,3 +2,4 @@
 */secrets.tf
 */*.tfstate*
 google/credentials
+*/.kube
