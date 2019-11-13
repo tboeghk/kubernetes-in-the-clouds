@@ -110,7 +110,7 @@ users:
 KUBECONFIG
 }
 
-resource "local_file" "foo" {
+resource "local_file" "kubeconfig" {
     content     = "${local.kubeconfig}"
     filename = ".kube/aws-kube-config"
 }

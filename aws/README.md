@@ -8,9 +8,14 @@ creation takes staggering 10+ minutes.
 
 ## Prerequisites
 
+* User configured
+* IAM roles for user
+
 ```
 brew install aws-iam-authenticator
 ```
+
+## Creating a cluster
 
 ```
 [...]

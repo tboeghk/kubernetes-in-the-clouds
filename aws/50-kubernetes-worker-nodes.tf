@@ -112,11 +112,13 @@ set -o xtrace
 USERDATA
 }
 
+# this launch configuration is the base line to our cluster
+# worker nodes.
 resource "aws_launch_configuration" "kubernetes-node" {
   associate_public_ip_address = true
   iam_instance_profile        = "${aws_iam_instance_profile.kubernetes-node.name}"
   image_id                    = "${data.aws_ami.eks-worker.id}"
-  instance_type               = "m4.large"
+  instance_type               = "m5.2xlarge"
   name_prefix                 = "${var.cluster-name}-node"
   security_groups             = ["${aws_security_group.kubernetes-node.id}"]
   user_data_base64            = "${base64encode(local.eks-node-userdata)}"
@@ -126,7 +128,8 @@ resource "aws_launch_configuration" "kubernetes-node" {
   }
 }
 
-# Build a autoscaling group and launch worker nodes
+# Build a autoscaling group and launch worker nodes that
+# are always on
 resource "aws_autoscaling_group" "kubernetes-nodes" {
   desired_capacity     = 2
   launch_configuration = "${aws_launch_configuration.kubernetes-node.id}"
@@ -134,6 +137,76 @@ resource "aws_autoscaling_group" "kubernetes-nodes" {
   min_size             = 2
   name                 = "${var.cluster-name}"
   vpc_zone_identifier  = "${aws_subnet.cloud-k8s-demo-subnet.*.id}"
+
+  tag {
+    key                 = "Name"
+    value               = "${var.cluster-name}"
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "kubernetes.io/cluster/${var.cluster-name}"
+    value               = "owned"
+    propagate_at_launch = true
+  }
+}
+
+# this launch configuration is the configuration to our cluster
+# spot worker nodes. We will override instance_types and spot
+# prices in autoscaling groups below.
+resource "aws_launch_template" "spot-nodes" {
+  name_prefix            = "${var.cluster-name}-spot"
+  instance_type          = "m5.2xlarge"
+  image_id               = "${data.aws_ami.eks-worker.id}"
+  user_data              = "${base64encode(local.eks-node-userdata)}"
+  #vpc_security_group_ids = ["${aws_security_group.kubernetes-node.id}"]
+  iam_instance_profile {
+    name                 = "${aws_iam_instance_profile.kubernetes-node.name}"
+  }
+  network_interfaces {
+    associate_public_ip_address = true
+    security_groups      = ["${aws_security_group.kubernetes-node.id}"]
+  }
+  lifecycle {
+    create_before_destroy = "true"
+  } 
+}
+
+# Acquire spot instances as worker nodes for the cluster
+resource "aws_autoscaling_group" "kubernetes-spot-nodes" {
+  desired_capacity     = 0
+  max_size             = 10
+  min_size             = 0
+  name                 = "${var.cluster-name}-spot"
+  vpc_zone_identifier  = "${aws_subnet.cloud-k8s-demo-subnet.*.id}"
+
+  mixed_instances_policy {
+    instances_distribution {
+        spot_max_price = "0.25"
+    }
+    launch_template {
+      launch_template_specification {
+        launch_template_id = "${aws_launch_template.spot-nodes.id}"
+        version            = "${aws_launch_template.spot-nodes.latest_version}"
+      }
+
+      override {
+        instance_type = "m5.large"
+      }
+
+      override {
+        instance_type = "m5.xlarge"
+      }
+
+      override {
+        instance_type = "m5.2xlarge"
+      }
+
+      override {
+        instance_type = "m5.4xlarge"
+      }
+    }
+  }
 
   tag {
     key                 = "Name"
@@ -171,5 +244,9 @@ resource "kubernetes_config_map" "aws-auth" {
     - system:nodes
 ROLES
 }
+
+  depends_on = [
+    "local_file.kubeconfig"
+  ]
 }
 
