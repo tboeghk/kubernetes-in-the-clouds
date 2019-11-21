@@ -24,7 +24,7 @@ module "kubernetes" {
     nodes = {
         count = 3
         instance_type = "m5.2xlarge"
-        spot_count = 5
+        spot_count = 8
         spot_max_price = 0.25
         spot_instance_types = [
             "m5.2xlarge",

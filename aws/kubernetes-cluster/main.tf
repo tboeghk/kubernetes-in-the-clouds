@@ -269,7 +269,7 @@ resource "aws_autoscaling_group" "nodes" {
   max_size             = length("${data.aws_availability_zones.available.names}") * 2
   min_size             = length("${data.aws_availability_zones.available.names}")
   name                 = "${var.name}-nodes"
-  vpc_zone_identifier  = ["${var.vpc_id}"]
+  vpc_zone_identifier  = "${data.aws_subnet_ids.subnets.ids}"
 
   tag {
     key                 = "Name"
@@ -289,7 +289,7 @@ resource "aws_autoscaling_group" "spot-nodes" {
   max_size             = "${var.nodes.spot_count}" * 5
   min_size             = 0
   name                 = "${var.name}-spot-nodess"
-  vpc_zone_identifier  = ["${var.vpc_id}"]
+  vpc_zone_identifier  = "${data.aws_subnet_ids.subnets.ids}"
 
   mixed_instances_policy {
     instances_distribution {
