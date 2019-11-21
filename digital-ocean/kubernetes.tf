@@ -3,7 +3,9 @@ terraform {
   required_version = "~> 0.12"
 }
 
-# a Kubernetes cluster 
+# Acquire cluster pet name
+
+# The Kubernetes cluster 
 resource "digitalocean_kubernetes_cluster" "dev-infra" {
   name    = "dev-infra"
   region  = "fra1"
@@ -16,3 +18,18 @@ resource "digitalocean_kubernetes_cluster" "dev-infra" {
     node_count = 3
   }
 }
+
+# Save the Kubeconfig to disk
+
+# Deploy Traefik as Ingress controller
+
+# Retrieve Loadbalancer IP
+
+# Configure DNS to point to new Loadbalancer
+
+# Acquire Let's Encrypt certificates (wildcard)
+
+# Deploy certificates as secrets
+
+# Maybe deploy even more resources, fiddle around with
+# user management
