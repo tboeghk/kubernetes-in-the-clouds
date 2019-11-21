@@ -1,3 +1,8 @@
+# Request availability zones currently available
+data "aws_availability_zones" "available" {
+    state = "available"
+}
+
 # ---------------------------------------------------------------------
 # (1) tag vpc and subnets for usage with current cluster
 # ---------------------------------------------------------------------
@@ -258,3 +263,91 @@ resource "aws_launch_template" "spot-node" {
 # ---------------------------------------------------------------------
 # (3c) launch worker nodes
 # ---------------------------------------------------------------------
+resource "aws_autoscaling_group" "nodes" {
+  desired_capacity     = "${var.nodes.count}"
+  launch_configuration = "${aws_launch_configuration.node.id}"
+  max_size             = length("${data.aws_availability_zones.available.names}") * 2
+  min_size             = length("${data.aws_availability_zones.available.names}")
+  name                 = "${var.name}-nodes"
+  vpc_zone_identifier  = ["${var.vpc_id}"]
+
+  tag {
+    key                 = "Name"
+    value               = "${var.name}-node"
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "kubernetes.io/cluster/${var.name}"
+    value               = "owned"
+    propagate_at_launch = true
+  }
+}
+
+resource "aws_autoscaling_group" "spot-nodes" {
+  desired_capacity     = "${var.nodes.spot_count}"
+  max_size             = "${var.nodes.spot_count}" * 5
+  min_size             = 0
+  name                 = "${var.name}-spot-nodess"
+  vpc_zone_identifier  = ["${var.vpc_id}"]
+
+  mixed_instances_policy {
+    instances_distribution {
+        spot_max_price = "${var.nodes.spot_max_price}"
+    }
+    launch_template {
+      launch_template_specification {
+        launch_template_id = "${aws_launch_template.spot-node.id}"
+        version            = "${aws_launch_template.spot-node.latest_version}"
+      }
+
+      override {
+        instance_type = "m5.xlarge"
+      }
+
+      override {
+        instance_type = "m5.2xlarge"
+      }
+
+      override {
+        instance_type = "m5.4xlarge"
+      }
+    }
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "${var.name}-spot-node"
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "kubernetes.io/cluster/${var.name}"
+    value               = "owned"
+    propagate_at_launch = true
+  }
+}
+
+# ---------------------------------------------------------------------
+# (4) Attach worker nodes to cluster
+# ---------------------------------------------------------------------
+resource "kubernetes_config_map" "aws-auth" {
+  metadata {
+    name      = "aws-auth"
+    namespace = "kube-system"
+  }
+
+  data = {
+    mapRoles = <<ROLES
+- rolearn: ${aws_iam_role.node.arn}
+  username: system:node:{{EC2PrivateDNSName}}
+  groups:
+    - system:bootstrappers
+    - system:nodes
+ROLES
+}
+
+  depends_on = [
+    "local_file.kubeconfig"
+  ]
+}

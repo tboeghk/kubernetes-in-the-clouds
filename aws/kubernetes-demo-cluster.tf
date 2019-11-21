@@ -8,7 +8,9 @@ provider "aws" {
 
 # retrieve vpc data to place cluster in
 data "aws_vpc" "selected" {
-  id = "vpc-0a172f4b7e09126eb"
+  tags = {
+    Name = "kubernetes-vpc"
+  }
 }
 
 # create cluster
