@@ -1,8 +1,15 @@
-# Digital Ocean (DO)
+# Kubernetes ❤️ Digital Ocean (DO)
 
-> _Kubernetes Cloud Provider experiments using Terraform_
+> _Kubernetes in the clouds: experiments using Terraform_
 
-DO ships it's own command line tool to interact with the API. 
+This example will create a Kubernetes cluster with a recent version,
+three worker nodes and expose it via a Traefik ingress controller to
+the internet.
+
+## Setting up Digital Ocean as provider
+
+[Digital Ocean](https://m.do.co/c/cc570ae1a34b) ships it's own 
+command line tool `doctl` to interact with the API. 
 
 ```
 brew install doctl
@@ -43,11 +50,10 @@ Then, spinning up the cluster is straight forward. But it still takes about
 5 minutes to have control plane and worker up and running.
 
 ```
-$ tf init
-$ tf plan
-$ tf apply
+$ terraform init
+$ terraform apply
 [...]
-digitalocean_kubernetes_cluster.dev-infra: Creation complete after 5m2s [id=56bcb664-e70f-421a-8300-91bb6a153435]
+digitalocean_kubernetes_cluster.dev-infra: Creation complete after 5m2s [id=56bc...]
 
 Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
 ```
@@ -70,4 +76,7 @@ dev-infra-pool-gkzy   Ready    <none>   5m21s   v1.15.5
 ```
 
 ![DO Kubernetes cluster](do_cluster.png)
+
+## Ingress
+
 

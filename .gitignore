@@ -1,5 +1,5 @@
 **/.terraform
-*/secrets.tf
 **/*.tfstate*
 google/credentials
 */.kube
+*secrets.*
