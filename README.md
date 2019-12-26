@@ -20,7 +20,7 @@ Some cloud providers have accompanying tools that easy spinning up or configurin
 a cluster. We'll just use them outside the main Terraform code to comply with
 the _infrastructure as code_ paradigm.
 
-Cloud servers cost money!__. When you're done experimenting, remember to destroy 
+__💰Cloud servers cost money!__ When you're done experimenting, remember to destroy 
 all resources using a gentle
 
 ```
