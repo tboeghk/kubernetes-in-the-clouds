@@ -7,6 +7,13 @@ Spinning up Kubernetes clusters with different cloud providers. How is it like? 
 * [Google](google/)
 * Azure
 
+### Questions
+
+* How is the _overall experience_ spinning up clusters using Infrastructure as Code (Terraform)?
+* How is _ingress traffic_ handled?
+* How can the _elasticity_ of the cloud be leveraged in Kubernetes (storage, auto scaler)?
+* How do _users authenticate_?
+
 ## Running the examples
 
 Each folder holds all source code to spin up a Kubernetes cluster with a

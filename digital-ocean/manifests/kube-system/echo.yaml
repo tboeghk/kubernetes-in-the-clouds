@@ -1,0 +1,51 @@
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: echo-server
+spec:
+  rules:
+  - host: echo.brave-peacock.fra1.o11ystack.org
+    http:
+      paths:
+      - backend:
+          serviceName: echo-server
+          servicePort: web
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo-server
+spec:
+  ports:
+  - name: web
+    port: 8080
+    protocol: TCP
+  selector:
+    application: echo-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echo-server
+spec:
+  selector:
+    matchLabels:
+      application: echo-server
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: echo-server
+        application: echo-server
+    spec:
+      containers:
+        - name: echo-server
+          image: k8s.gcr.io/echoserver:1.10
+          resources:
+            requests:
+              cpu: "5m"
+              memory: "10Mi"
+            limits:
+              cpu: "100m"
+              memory: "50Mi"

@@ -1,0 +1,51 @@
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: traefik-web-ui
+  namespace: kube-system
+spec:
+  rules:
+  - host: traefik.${domain}
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: traefik
+          servicePort: admin
+---
+# Declaring the user list
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: auth
+spec:
+  basicAuth:
+    secret: admin-auth
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: admin-auth
+  namespace: kube-system
+
+data:
+  users: |
+    YWRtaW46JGFwcjEkSGhRd1pCQmkkVmdjZXlNMUx0S0VvODZVN3pXTDVyMQ==
+
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-dashboard
+  namespace: kube-system
+spec:
+  routes:
+  - match: Host(`traefik.${domain}`)
+    kind: Rule
+    middlewares:
+      - name: auth
+    services:
+    - name: api@internal
+      kind: TraefikService
