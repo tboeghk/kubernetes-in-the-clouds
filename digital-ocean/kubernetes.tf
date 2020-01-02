@@ -7,6 +7,11 @@ variable "traefik_version" {
   default = "1.7"
 }
 
+variable "tld" {
+  type = string
+  default = "o11ystack.org"
+}
+
 # token taken from environment
 # @see https://www.terraform.io/docs/providers/do/index.html#token
 provider "digitalocean" {
@@ -16,7 +21,9 @@ provider "digitalocean" {
 # random cluster name
 resource "random_pet" "cluster_name" {}
 
-# The Kubernetes cluster 
+# ---------------------------------------------------------------------
+# The Kubernetes cluster
+# ---------------------------------------------------------------------
 resource "digitalocean_kubernetes_cluster" "this" {
   name    = "dev-infra"
   region  = "fra1"
@@ -34,23 +41,26 @@ resource "digitalocean_kubernetes_cluster" "this" {
   } 
 }
 
-# Write Kubeconfig
+# Write Kubeconfig to local disk
 resource "local_file" "kubeconfig" {
     content   = digitalocean_kubernetes_cluster.this.kube_config.0.raw_config
     filename  = pathexpand("~/.kube/kube-config-${random_pet.cluster_name.id}")
 }
 
+# ---------------------------------------------------------------------
+# Kubernetes Services (Traefik / Ingress)
+# ---------------------------------------------------------------------
 # Parse current domain into Traefik admin ui ingress
 data "template_file" "traefik_admin_ui" {
   template = file("${path.root}/manifests/kube-system/traefik-${var.traefik_version}-admin-ui.yaml")
   vars = {
-    domain = "${random_pet.cluster_name.id}.${digitalocean_kubernetes_cluster.this.region}.o11ystack.org"
+    domain = "${random_pet.cluster_name.id}.${digitalocean_kubernetes_cluster.this.region}.${var.tld}"
   }
 }
 data "template_file" "echo" {
   template = file("${path.root}/manifests/kube-system/echo.yaml")
   vars = {
-    domain = "${random_pet.cluster_name.id}.${digitalocean_kubernetes_cluster.this.region}.o11ystack.org"
+    domain = "${random_pet.cluster_name.id}.${digitalocean_kubernetes_cluster.this.region}.${var.tld}"
   }
 }
 
@@ -85,7 +95,9 @@ resource "null_resource" "traefik" {
   ]
 }
 
+# ---------------------------------------------------------------------
 # create wildcard acme certificate (as it's not supported by DO load balancer)
+# ---------------------------------------------------------------------
 provider "acme" {
   server_url = "https://acme-v02.api.letsencrypt.org/directory"
 }
@@ -98,15 +110,17 @@ resource "acme_registration" "registration" {
 }
 resource "acme_certificate" "certificate" {
   account_key_pem           = acme_registration.registration.account_key_pem
-  common_name               = "${random_pet.cluster_name.id}.${digitalocean_kubernetes_cluster.this.region}.o11ystack.org"
-  subject_alternative_names = ["*.${random_pet.cluster_name.id}.${digitalocean_kubernetes_cluster.this.region}.o11ystack.org"]
+  common_name               = "${random_pet.cluster_name.id}.${digitalocean_kubernetes_cluster.this.region}.${var.tld}"
+  subject_alternative_names = ["*.${random_pet.cluster_name.id}.${digitalocean_kubernetes_cluster.this.region}.${var.tld}"]
 
   dns_challenge {
     provider = "digitalocean"
   }
 }
 
+# ---------------------------------------------------------------------
 # create DO load balancer
+# ---------------------------------------------------------------------
 resource "digitalocean_certificate" "this" {
   name    = "${random_pet.cluster_name.id}-certificate"
   type    = "custom"
@@ -138,25 +152,27 @@ resource "digitalocean_loadbalancer" "this" {
     target_protocol = "http"
   }
 
-#  healthcheck {
-#    check_interval_seconds = 3
-#    healthy_threshold = 2
-#    port     = 30080
-#    protocol = "http"
-#    path     = "/ping"
-#  }
+  healthcheck {
+    check_interval_seconds = 3
+    healthy_threshold = 2
+    port     = 30081
+    protocol = "http"
+    path     = "/ping"
+  }
 }
 
+# ---------------------------------------------------------------------
 # Point DNS to load balancer ip
+# ---------------------------------------------------------------------
 resource "digitalocean_record" "cluster" {
-  domain = "${digitalocean_kubernetes_cluster.this.region}.o11ystack.org"
+  domain = "${digitalocean_kubernetes_cluster.this.region}.${var.tld}"
   type   = "A"
   name   = random_pet.cluster_name.id
   value  = digitalocean_loadbalancer.this.ip
   ttl    = 300
 }
 resource "digitalocean_record" "cluster_wildcard" {
-  domain = "${digitalocean_kubernetes_cluster.this.region}.o11ystack.org"
+  domain = "${digitalocean_kubernetes_cluster.this.region}.${var.tld}"
   type   = "A"
   name   = "*.${random_pet.cluster_name.id}"
   value  = digitalocean_loadbalancer.this.ip
