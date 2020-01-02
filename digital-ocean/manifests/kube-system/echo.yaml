@@ -5,7 +5,7 @@ metadata:
   name: echo-server
 spec:
   rules:
-  - host: echo.brave-peacock.fra1.o11ystack.org
+  - host: echo.${domain}
     http:
       paths:
       - backend:

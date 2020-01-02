@@ -2,6 +2,11 @@ terraform {
   required_version = "~> 0.12"
 }
 
+variable "traefik_version" {
+  type = string
+  default = "1.7"
+}
+
 # token taken from environment
 # @see https://www.terraform.io/docs/providers/do/index.html#token
 provider "digitalocean" {
@@ -37,7 +42,13 @@ resource "local_file" "kubeconfig" {
 
 # Parse current domain into Traefik admin ui ingress
 data "template_file" "traefik_admin_ui" {
-  template = file("${path.root}/manifests/kube-system/traefik-2.1-admin-ui.yaml")
+  template = file("${path.root}/manifests/kube-system/traefik-${var.traefik_version}-admin-ui.yaml")
+  vars = {
+    domain = "${random_pet.cluster_name.id}.${digitalocean_kubernetes_cluster.this.region}.o11ystack.org"
+  }
+}
+data "template_file" "echo" {
+  template = file("${path.root}/manifests/kube-system/echo.yaml")
   vars = {
     domain = "${random_pet.cluster_name.id}.${digitalocean_kubernetes_cluster.this.region}.o11ystack.org"
   }
@@ -51,13 +62,13 @@ resource "null_resource" "traefik" {
   }
 
   provisioner "local-exec" {
-    command = "kubectl -n kube-system apply -f ${path.root}/manifests/kube-system/traefik-2.1.yaml"
+    command = "kubectl -n kube-system apply -f ${path.root}/manifests/kube-system/traefik-${var.traefik_version}.yaml"
     environment = {
       KUBECONFIG = pathexpand("~/.kube/kube-config-${random_pet.cluster_name.id}")
     }
   }
   provisioner "local-exec" {
-    command = "kubectl -n kube-system apply -f ${path.root}/manifests/kube-system/echo.yaml"
+    command = "echo '${data.template_file.echo.rendered}' | kubectl -n kube-system apply -f -"
     environment = {
       KUBECONFIG = pathexpand("~/.kube/kube-config-${random_pet.cluster_name.id}")
     }
@@ -111,27 +122,29 @@ resource "digitalocean_loadbalancer" "this" {
   name        = "${random_pet.cluster_name.id}-loadbalancer"
   region      = digitalocean_kubernetes_cluster.this.region
   droplet_tag = random_pet.cluster_name.id
+  redirect_http_to_https = true
 
   forwarding_rule {
     entry_port = 443
-    entry_protocol = "tcp"
-    target_port = 30443
-    target_protocol = "tcp"
+    entry_protocol = "https"
+    target_port = 30080
+    target_protocol = "http"
+    certificate_id = digitalocean_certificate.this.id
   }
   forwarding_rule {
     entry_port = 80
-    entry_protocol = "tcp"
+    entry_protocol = "http"
     target_port = 30080
-    target_protocol = "tcp"
+    target_protocol = "http"
   }
 
-  healthcheck {
-    check_interval_seconds = 3
-    healthy_threshold = 2
-    port     = 30081
-    protocol = "http"
-    path     = "/ping"
-  }
+#  healthcheck {
+#    check_interval_seconds = 3
+#    healthy_threshold = 2
+#    port     = 30080
+#    protocol = "http"
+#    path     = "/ping"
+#  }
 }
 
 # Point DNS to load balancer ip
