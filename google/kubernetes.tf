@@ -18,7 +18,7 @@ resource "google_container_cluster" "dev-infra" {
 resource "google_container_node_pool" "dev-infra-pool" {
   name       = "dev-infra-pool"
   location   = "europe-west3"
-  cluster    = "${google_container_cluster.dev-infra.name}"
+  cluster    = google_container_cluster.dev-infra.name
   node_count = 2
 
   node_config {
